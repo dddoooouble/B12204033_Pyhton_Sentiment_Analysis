@@ -202,6 +202,125 @@ def plot_query_distribution(query_df: pd.DataFrame, output_path: str | Path) -> 
     return path
 
 
+def plot_sentiment_comparison(comparison_df: pd.DataFrame, output_path: str | Path, title: str) -> Path | None:
+    if comparison_df.empty:
+        return None
+
+    _apply_plot_style()
+    fig, ax = plt.subplots(figsize=(12, 7), constrained_layout=True)
+    positions = range(len(SENTIMENT_LABELS))
+    width = 0.34
+    groups = comparison_df["group"].drop_duplicates().tolist()
+
+    for index, group in enumerate(groups):
+        subset = comparison_df[comparison_df["group"] == group].set_index("sentiment").reindex(SENTIMENT_LABELS)
+        offset = (-width / 2) if index == 0 else (width / 2)
+        bars = ax.bar(
+            [position + offset for position in positions],
+            subset["ratio_pct"],
+            width=width,
+            label=group,
+            color=[SENTIMENT_COLORS[sentiment] for sentiment in SENTIMENT_LABELS] if index == 0 else "#D6E4F0",
+            edgecolor="#233142",
+            alpha=0.88,
+        )
+        for bar, value in zip(bars, subset["ratio_pct"]):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.9,
+                f"{value:.1f}%",
+                ha="center",
+                va="bottom",
+                fontsize=10,
+            )
+
+    ax.set_xticks(list(positions))
+    ax.set_xticklabels(SENTIMENT_LABELS)
+    ax.set_ylabel("Ratio (%)")
+    ax.set_ylim(0, max(comparison_df["ratio_pct"]) * 1.22)
+    ax.set_title(title, fontsize=16, weight="bold")
+    ax.legend(frameon=True)
+    ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=220, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
+def plot_event_timeline(
+    time_df: pd.DataFrame,
+    output_path: str | Path,
+    title: str,
+    event_markers: list[tuple[pd.Timestamp, str]] | None = None,
+) -> Path | None:
+    if time_df.empty:
+        return None
+
+    _apply_plot_style()
+    working = time_df.sort_index().copy()
+    full_index = _build_continuous_time_index(working.index)
+    if full_index is not None:
+        working = working.reindex(full_index)
+        working["tweet_count"] = working["tweet_count"].fillna(0)
+
+    fig, (trend_ax, score_ax) = plt.subplots(2, 1, figsize=(15, 10), constrained_layout=True, sharex=True)
+
+    volume_ax = trend_ax.twinx()
+    volume_ax.bar(working.index, working["tweet_count"], width=0.01, color="#CFD8E3", alpha=0.55, label="Tweet Count")
+    volume_ax.set_ylabel("Tweet Count", color="#5C6770")
+    volume_ax.grid(False)
+
+    for sentiment in SENTIMENT_LABELS:
+        trend_ax.plot(
+            working.index,
+            working[f"{sentiment}_ratio"],
+            color=SENTIMENT_COLORS[sentiment],
+            linewidth=2.4,
+            label=f"{sentiment} Ratio",
+        )
+
+    trend_ax.set_title(title, fontsize=18, weight="bold")
+    trend_ax.set_ylabel("Sentiment Ratio")
+    trend_ax.set_ylim(0, 1)
+    trend_ax.grid(True, linestyle="--", alpha=0.35)
+    trend_ax.legend(loc="upper left", frameon=True, ncol=3)
+    _annotate_volume_peak(volume_ax, working.dropna(subset=["tweet_count"]))
+
+    score_ax.plot(working.index, working["sentiment_gap"], color="#F4A261", linewidth=2.4, label="Positive - Negative")
+    score_ax.axhline(0, color="#6C757D", linestyle="--", linewidth=1.2)
+    score_ax.set_ylabel("Sentiment Gap")
+    score_ax.set_xlabel("Time (UTC)")
+    score_ax.grid(True, linestyle="--", alpha=0.35)
+    score_ax.legend(loc="upper left", frameon=True)
+    score_ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+
+    if event_markers:
+        for marker_time, label in event_markers:
+            for axis in (trend_ax, score_ax):
+                axis.axvline(marker_time, color="#E9C46A", linestyle=":", linewidth=1.5, alpha=0.95)
+            trend_ax.annotate(
+                label,
+                xy=(marker_time, 0.96),
+                xycoords=("data", "axes fraction"),
+                xytext=(4, -2),
+                textcoords="offset points",
+                rotation=90,
+                va="top",
+                ha="left",
+                fontsize=8.5,
+                color="#F1FAEE",
+                bbox={"boxstyle": "round,pad=0.25", "facecolor": "#2B2D42", "edgecolor": "#E9C46A", "alpha": 0.9},
+            )
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, dpi=220, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
 def _annotate_peak(axis: plt.Axes, time_df: pd.DataFrame, column: str, label: str, color: str) -> None:
     if time_df.empty:
         return
@@ -219,3 +338,36 @@ def _annotate_peak(axis: plt.Axes, time_df: pd.DataFrame, column: str, label: st
         bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "edgecolor": color, "alpha": 0.9},
         arrowprops={"arrowstyle": "->", "color": color, "lw": 1.2},
     )
+
+
+def _annotate_volume_peak(axis: plt.Axes, time_df: pd.DataFrame) -> None:
+    if time_df.empty:
+        return
+
+    peak_time = time_df["tweet_count"].idxmax()
+    peak_value = time_df.loc[peak_time, "tweet_count"]
+    axis.annotate(
+        f"Volume Peak\n{peak_time.strftime('%H:%M')} | {int(peak_value):,}",
+        xy=(peak_time, peak_value),
+        xytext=(-26, -8),
+        textcoords="offset points",
+        fontsize=9.5,
+        color="#264653",
+        bbox={"boxstyle": "round,pad=0.3", "facecolor": "white", "edgecolor": "#264653", "alpha": 0.9},
+        arrowprops={"arrowstyle": "->", "color": "#264653", "lw": 1.2},
+    )
+
+
+def _build_continuous_time_index(index: pd.Index) -> pd.DatetimeIndex | None:
+    if len(index) < 2:
+        return None
+
+    inferred = pd.infer_freq(index)
+    if inferred:
+        return pd.date_range(index.min(), index.max(), freq=inferred)
+
+    deltas = pd.Series(index[1:] - index[:-1])
+    step = deltas.mode().iloc[0] if not deltas.empty else None
+    if step is None or pd.isna(step):
+        return None
+    return pd.date_range(index.min(), index.max(), freq=step)

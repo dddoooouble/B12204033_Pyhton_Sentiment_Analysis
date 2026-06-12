@@ -3,12 +3,37 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .analyzer import compute_overall_summary, compute_query_distribution, compute_sentiment_distribution, compute_time_sentiment, compute_top_terms
-from .config import DEFAULT_MIN_TWEETS, DEFAULT_TIME_FREQUENCY, DEFAULT_TOP_N_TERMS, OUTPUT_DIR, ensure_directories, resolve_default_input_file
+import pandas as pd
+
+from .analyzer import (
+    compute_event_summary,
+    compute_overall_summary,
+    compute_query_distribution,
+    compute_sentiment_comparison,
+    compute_sentiment_distribution,
+    compute_time_sentiment,
+    compute_top_terms,
+    filter_event_subset,
+)
+from .config import (
+    DEFAULT_MIN_TWEETS,
+    DEFAULT_TIME_FREQUENCY,
+    DEFAULT_TOP_N_TERMS,
+    EVENT_MARKERS_UTC,
+    OUTPUT_DIR,
+    ensure_directories,
+    resolve_default_input_file,
+)
 from .data_loader import load_data, summarize_dataset
 from .preprocessor import apply_cleaning
 from .sentiment_analyzer import apply_sentiment
-from .visualizer import plot_query_distribution, plot_sentiment_dashboard, plot_top_terms
+from .visualizer import (
+    plot_event_timeline,
+    plot_query_distribution,
+    plot_sentiment_comparison,
+    plot_sentiment_dashboard,
+    plot_top_terms,
+)
 
 
 @dataclass
@@ -22,11 +47,20 @@ class PipelineOutputs:
     summary_report_path: Path
     top_terms_report_path: Path
     query_distribution_report_path: Path | None
+    event_summary_report_path: Path | None
+    event_distribution_report_path: Path | None
+    event_comparison_report_path: Path | None
+    event_top_terms_report_path: Path | None
+    event_time_report_path: Path | None
     dashboard_path: Path
     top_terms_figure_path: Path
     query_distribution_figure_path: Path | None
+    event_timeline_figure_path: Path | None
+    event_comparison_figure_path: Path | None
+    event_top_terms_figure_path: Path | None
     total_tweets: int
     time_windows: int
+    event_subset_tweets: int
 
 
 def run_pipeline(
@@ -71,6 +105,11 @@ def run_pipeline(
     summary_report_path = report_dir / "overall_summary.csv"
     top_terms_report_path = report_dir / "top_terms_by_sentiment.csv"
     query_distribution_report_path = report_dir / "query_distribution.csv"
+    event_summary_report_path = report_dir / "capitol_event_summary.csv"
+    event_distribution_report_path = report_dir / "capitol_event_sentiment_distribution.csv"
+    event_comparison_report_path = report_dir / "capitol_event_sentiment_comparison.csv"
+    event_top_terms_report_path = report_dir / "capitol_event_top_terms.csv"
+    event_time_report_path = report_dir / "capitol_event_time_summary.csv"
 
     scored_df.to_csv(scored_data_path, index=False)
     time_df.reset_index().to_csv(time_report_path, index=False)
@@ -81,6 +120,34 @@ def run_pipeline(
         query_distribution_df.to_csv(query_distribution_report_path, index=False)
     else:
         query_distribution_report_path = None
+
+    event_subset_df = filter_event_subset(scored_df)
+    event_time_df = compute_time_sentiment(event_subset_df, freq=freq, min_tweets=1)
+    event_distribution_df = compute_sentiment_distribution(event_subset_df) if not event_subset_df.empty else distribution_df.iloc[0:0].copy()
+    event_top_terms_df = compute_top_terms(event_subset_df, top_n=top_n_terms) if not event_subset_df.empty else top_terms_df.iloc[0:0].copy()
+    event_comparison_df = compute_sentiment_comparison(scored_df, event_subset_df)
+    event_summary_df = compute_event_summary(event_subset_df, scored_df, event_time_df)
+
+    if not event_summary_df.empty:
+        event_summary_df.to_csv(event_summary_report_path, index=False)
+    else:
+        event_summary_report_path = None
+    if not event_distribution_df.empty:
+        event_distribution_df.to_csv(event_distribution_report_path, index=False)
+    else:
+        event_distribution_report_path = None
+    if not event_comparison_df.empty:
+        event_comparison_df.to_csv(event_comparison_report_path, index=False)
+    else:
+        event_comparison_report_path = None
+    if not event_top_terms_df.empty:
+        event_top_terms_df.to_csv(event_top_terms_report_path, index=False)
+    else:
+        event_top_terms_report_path = None
+    if not event_time_df.empty:
+        event_time_df.reset_index().to_csv(event_time_report_path, index=False)
+    else:
+        event_time_report_path = None
 
     topic_label = _infer_topic_label(raw_df)
     dashboard_path = plot_sentiment_dashboard(
@@ -99,6 +166,26 @@ def run_pipeline(
         query_df=query_distribution_df,
         output_path=figure_dir / "query_distribution.png",
     )
+    event_markers = [
+        (pd.Timestamp(timestamp, tz="UTC").tz_localize(None), label)
+        for timestamp, label in EVENT_MARKERS_UTC
+    ]
+    event_timeline_figure_path = plot_event_timeline(
+        time_df=event_time_df,
+        output_path=figure_dir / "capitol_event_timeline.png",
+        title="Jan. 6 Capitol Event Subset: Sentiment and Volume Over Time",
+        event_markers=event_markers,
+    )
+    event_comparison_figure_path = plot_sentiment_comparison(
+        comparison_df=event_comparison_df,
+        output_path=figure_dir / "capitol_event_sentiment_comparison.png",
+        title="Overall Dataset vs Capitol Event Subset",
+    )
+    event_top_terms_figure_path = plot_top_terms(
+        top_terms_df=event_top_terms_df,
+        output_path=figure_dir / "capitol_event_top_terms.png",
+        top_n=top_n_terms,
+    ) if not event_top_terms_df.empty else None
 
     return PipelineOutputs(
         input_file=source_path,
@@ -110,11 +197,20 @@ def run_pipeline(
         summary_report_path=summary_report_path,
         top_terms_report_path=top_terms_report_path,
         query_distribution_report_path=query_distribution_report_path,
+        event_summary_report_path=event_summary_report_path,
+        event_distribution_report_path=event_distribution_report_path,
+        event_comparison_report_path=event_comparison_report_path,
+        event_top_terms_report_path=event_top_terms_report_path,
+        event_time_report_path=event_time_report_path,
         dashboard_path=dashboard_path,
         top_terms_figure_path=top_terms_figure_path,
         query_distribution_figure_path=query_distribution_figure_path,
+        event_timeline_figure_path=event_timeline_figure_path,
+        event_comparison_figure_path=event_comparison_figure_path,
+        event_top_terms_figure_path=event_top_terms_figure_path,
         total_tweets=int(len(scored_df)),
         time_windows=int(len(time_df)),
+        event_subset_tweets=int(len(event_subset_df)),
     )
 
 

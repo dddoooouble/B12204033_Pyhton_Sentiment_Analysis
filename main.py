@@ -56,6 +56,13 @@ def main() -> None:
     print(f"Top terms figure: {outputs.top_terms_figure_path}")
     if outputs.query_distribution_figure_path:
         print(f"Query distribution figure: {outputs.query_distribution_figure_path}")
+    print(f"Capitol event subset tweets: {outputs.event_subset_tweets:,}")
+    if outputs.event_timeline_figure_path:
+        print(f"Capitol event timeline figure: {outputs.event_timeline_figure_path}")
+    if outputs.event_comparison_figure_path:
+        print(f"Capitol event comparison figure: {outputs.event_comparison_figure_path}")
+    if outputs.event_top_terms_figure_path:
+        print(f"Capitol event top terms figure: {outputs.event_top_terms_figure_path}")
 
 
 if __name__ == "__main__":

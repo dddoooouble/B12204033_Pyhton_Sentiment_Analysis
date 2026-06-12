@@ -18,6 +18,20 @@ FALLBACK_INPUT_FILE = PROJECT_ROOT / "1234at.csv"
 DEFAULT_TIME_FREQUENCY = "15min"
 DEFAULT_MIN_TWEETS = 10
 DEFAULT_TOP_N_TERMS = 12
+EVENT_KEYWORDS = (
+    "trump",
+    "capitol",
+    "congress",
+    "riot",
+    "insurrection",
+    "pence",
+)
+EVENT_MARKERS_UTC = (
+    ("2021-01-06 19:24:00", "Trump tweet on Pence"),
+    ("2021-01-06 19:38:00", "Stay peaceful"),
+    ("2021-01-06 21:17:00", "Go home video"),
+    ("2021-01-06 23:01:00", "Remember this day"),
+)
 
 SENTIMENT_LABELS = ("Positive", "Neutral", "Negative")
 SENTIMENT_COLORS = {
