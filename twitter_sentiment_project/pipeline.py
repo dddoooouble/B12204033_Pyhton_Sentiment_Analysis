@@ -170,10 +170,11 @@ def run_pipeline(
         (pd.Timestamp(timestamp, tz="UTC").tz_localize(None), label)
         for timestamp, label in EVENT_MARKERS_UTC
     ]
+    event_plot_time_df = compute_time_sentiment(event_subset_df, freq="1h", min_tweets=1)
     event_timeline_figure_path = plot_event_timeline(
-        time_df=event_time_df,
+        time_df=event_plot_time_df,
         output_path=figure_dir / "capitol_event_timeline.png",
-        title="Jan. 6 Capitol Event Subset: Sentiment and Volume Over Time",
+        title="Jan. 6 Capitol Event Subset: Hourly Volume and Sentiment Share",
         event_markers=event_markers,
     )
     event_comparison_figure_path = plot_sentiment_comparison(

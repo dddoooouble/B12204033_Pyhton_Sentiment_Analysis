@@ -264,43 +264,44 @@ def plot_event_timeline(
     if full_index is not None:
         working = working.reindex(full_index)
         working["tweet_count"] = working["tweet_count"].fillna(0)
+        for sentiment in SENTIMENT_LABELS:
+            working[f"{sentiment}_ratio"] = working[f"{sentiment}_ratio"].fillna(0)
 
-    fig, (trend_ax, score_ax) = plt.subplots(2, 1, figsize=(15, 10), constrained_layout=True, sharex=True)
+    fig, (volume_ax, ratio_ax) = plt.subplots(2, 1, figsize=(15, 8.8), constrained_layout=True, sharex=True)
 
-    volume_ax = trend_ax.twinx()
-    volume_ax.bar(working.index, working["tweet_count"], width=0.01, color="#CFD8E3", alpha=0.55, label="Tweet Count")
-    volume_ax.set_ylabel("Tweet Count", color="#5C6770")
-    volume_ax.grid(False)
+    time_step_days = _infer_bar_width_days(working.index)
+    volume_ax.bar(working.index, working["tweet_count"], width=time_step_days * 0.72, color="#9DB4C0", alpha=0.95)
+    volume_ax.plot(working.index, working["tweet_count"], color="#E9C46A", linewidth=2.0, marker="o", markersize=4)
+    volume_ax.set_title(title, fontsize=18, weight="bold")
+    volume_ax.set_ylabel("Tweet Count")
+    volume_ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+    _annotate_volume_peak(volume_ax, working)
 
+    cumulative_bottom = pd.Series(0.0, index=working.index)
     for sentiment in SENTIMENT_LABELS:
-        trend_ax.plot(
+        ratio_ax.bar(
             working.index,
             working[f"{sentiment}_ratio"],
+            bottom=cumulative_bottom,
+            width=time_step_days * 0.72,
             color=SENTIMENT_COLORS[sentiment],
-            linewidth=2.4,
-            label=f"{sentiment} Ratio",
+            alpha=0.9,
+            label=sentiment,
         )
+        cumulative_bottom = cumulative_bottom + working[f"{sentiment}_ratio"]
 
-    trend_ax.set_title(title, fontsize=18, weight="bold")
-    trend_ax.set_ylabel("Sentiment Ratio")
-    trend_ax.set_ylim(0, 1)
-    trend_ax.grid(True, linestyle="--", alpha=0.35)
-    trend_ax.legend(loc="upper left", frameon=True, ncol=3)
-    _annotate_volume_peak(volume_ax, working.dropna(subset=["tweet_count"]))
-
-    score_ax.plot(working.index, working["sentiment_gap"], color="#F4A261", linewidth=2.4, label="Positive - Negative")
-    score_ax.axhline(0, color="#6C757D", linestyle="--", linewidth=1.2)
-    score_ax.set_ylabel("Sentiment Gap")
-    score_ax.set_xlabel("Time (UTC)")
-    score_ax.grid(True, linestyle="--", alpha=0.35)
-    score_ax.legend(loc="upper left", frameon=True)
-    score_ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    ratio_ax.set_ylabel("Sentiment Share")
+    ratio_ax.set_xlabel("Time (UTC)")
+    ratio_ax.set_ylim(0, 1)
+    ratio_ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    ratio_ax.grid(True, axis="y", linestyle="--", alpha=0.3)
+    ratio_ax.legend(loc="upper right", frameon=True, ncol=3)
 
     if event_markers:
         for marker_time, label in event_markers:
-            for axis in (trend_ax, score_ax):
+            for axis in (volume_ax, ratio_ax):
                 axis.axvline(marker_time, color="#E9C46A", linestyle=":", linewidth=1.5, alpha=0.95)
-            trend_ax.annotate(
+            volume_ax.annotate(
                 label,
                 xy=(marker_time, 0.96),
                 xycoords=("data", "axes fraction"),
@@ -371,3 +372,11 @@ def _build_continuous_time_index(index: pd.Index) -> pd.DatetimeIndex | None:
     if step is None or pd.isna(step):
         return None
     return pd.date_range(index.min(), index.max(), freq=step)
+
+
+def _infer_bar_width_days(index: pd.Index) -> float:
+    if len(index) < 2:
+        return 1 / 24
+    deltas = pd.Series(index[1:] - index[:-1])
+    step = deltas.mode().iloc[0]
+    return step / pd.Timedelta(days=1)
