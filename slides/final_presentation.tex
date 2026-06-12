@@ -14,20 +14,37 @@
 \usepackage{xcolor}
 \usetikzlibrary{positioning}
 
-\definecolor{PrimaryBlue}{RGB}{28,74,118}
-\definecolor{AccentTeal}{RGB}{42,157,143}
-\definecolor{AccentOrange}{RGB}{231,111,81}
+\definecolor{NightTop}{RGB}{0,0,0}
+\definecolor{NightBottom}{RGB}{64,64,64}
+\definecolor{PanelDark}{RGB}{18,22,28}
+\definecolor{PanelMid}{RGB}{32,37,44}
+\definecolor{TextLight}{RGB}{244,247,250}
+\definecolor{GradientStart}{RGB}{255,0,244}
+\definecolor{GradientEnd}{RGB}{0,238,255}
 \definecolor{SoftGray}{RGB}{245,247,250}
 \definecolor{CodeGray}{RGB}{78,78,78}
 
-\setbeamercolor{structure}{fg=PrimaryBlue}
-\setbeamercolor{frametitle}{fg=PrimaryBlue}
-\setbeamercolor{title}{fg=white,bg=PrimaryBlue}
-\setbeamercolor{titlelike}{fg=white,bg=PrimaryBlue}
-\setbeamercolor{subtitle}{fg=white}
-\setbeamercolor{block title}{fg=white,bg=PrimaryBlue}
-\setbeamercolor{block body}{bg=black!3}
-\setbeamercolor{alerted text}{fg=AccentOrange}
+\hypersetup{colorlinks=true, linkcolor=GradientEnd, urlcolor=GradientEnd}
+
+\setbeamercolor{background canvas}{bg=PanelDark}
+\setbeamercolor{normal text}{fg=TextLight,bg=PanelDark}
+\setbeamercolor{structure}{fg=GradientEnd}
+\setbeamercolor{frametitle}{fg=TextLight,bg=black!55!PanelDark}
+\setbeamercolor{title}{fg=TextLight}
+\setbeamercolor{titlelike}{fg=TextLight}
+\setbeamercolor{subtitle}{fg=TextLight}
+\setbeamercolor{block title}{fg=TextLight,bg=GradientEnd!18!black}
+\setbeamercolor{block body}{fg=TextLight,bg=white!4!black}
+\setbeamercolor{alerted text}{fg=GradientStart}
+\setbeamercolor{section in toc}{fg=TextLight}
+\setbeamercolor{subsection in toc}{fg=TextLight}
+\setbeamercolor{palette primary}{bg=black,fg=TextLight}
+\setbeamercolor{palette secondary}{bg=PanelMid,fg=TextLight}
+\setbeamercolor{palette tertiary}{bg=black,fg=GradientEnd}
+\setbeamercolor{palette quaternary}{bg=black,fg=TextLight}
+\setbeamercolor{author in head/foot}{bg=black,fg=TextLight}
+\setbeamercolor{title in head/foot}{bg=PanelMid,fg=TextLight}
+\setbeamercolor{date in head/foot}{bg=black,fg=TextLight}
 
 \DefineVerbatimEnvironment{CodeBlock}{Verbatim}{
   fontsize=\scriptsize,
@@ -37,28 +54,39 @@
   numbersep=4pt
 }
 
-\title{Python資料分析跟機器學習}
-\subtitle{Twitter 情緒分析期末專題報告}
+\title{Python Twitter情緒分析 報告擴展}
+\subtitle{資料整理、情緒評分與視覺化流程}
 \author{製作人 B12204033 施卲}
 \institute{期末專題簡報}
-\date{2026年6月12日}
+\date{}
 
 \begin{document}
 
 \begin{frame}[plain]
+\begin{tikzpicture}[remember picture, overlay]
+  \path[shade, top color=NightTop, bottom color=NightBottom]
+    (current page.south west) rectangle (current page.north east);
+\end{tikzpicture}
+
+\vspace*{1.35cm}
 \centering
-\vspace{1.1cm}
-{\color{PrimaryBlue}\bfseries\LARGE Python資料分析跟機器學習\par}
-\vspace{0.4cm}
-{\large Twitter 情緒分析期末專題報告\par}
-\vspace{1.0cm}
-\begin{beamercolorbox}[wd=0.82\paperwidth, rounded=true, shadow=true, sep=12pt, center]{block title}
-製作人 B12204033 施卲
-\end{beamercolorbox}
-\vspace{0.9cm}
-{\large 期末專題簡報\par}
-\vspace{0.8cm}
-{\Large 2026 年 6 月 12 日\par}
+{\color{TextLight}\bfseries\fontsize{25}{31}\selectfont Python Twitter情緒分析\par}
+\vspace{0.24cm}
+{\color{TextLight}\bfseries\fontsize{23}{29}\selectfont 報告擴展\par}
+\vspace{0.45cm}
+\begin{tikzpicture}
+  \shade[left color=GradientStart, right color=GradientEnd]
+    (0,0) rectangle (8.2,0.10);
+\end{tikzpicture}\par
+\vspace{0.55cm}
+{\color{TextLight!82}\Large 資料整理、情緒評分\par}
+\vspace{0.12cm}
+{\color{TextLight!82}\Large 與視覺化流程\par}
+\vspace{0.95cm}
+{\color{GradientEnd}\Large 製作人 B12204033 施卲\par}
+\vspace{0.32cm}
+{\color{TextLight!80}\large 期末專題簡報\par}
+\vfill
 \end{frame}
 
 \begin{frame}{報告大綱}
@@ -93,13 +121,13 @@
 \begin{frame}{專題流程總覽}
 \centering
 \begin{tikzpicture}[node distance=1.25cm, >=latex, rounded corners]
-  \node[draw, fill=PrimaryBlue!8, minimum width=2.2cm, minimum height=0.95cm] (raw) {原始 CSV};
-  \node[draw, fill=PrimaryBlue!8, minimum width=2.2cm, minimum height=0.95cm, right=of raw] (load) {資料載入};
-  \node[draw, fill=PrimaryBlue!8, minimum width=2.2cm, minimum height=0.95cm, right=of load] (clean) {文字清理};
-  \node[draw, fill=PrimaryBlue!8, minimum width=2.2cm, minimum height=0.95cm, right=of clean] (sent) {情緒判定};
-  \node[draw, fill=PrimaryBlue!8, minimum width=2.2cm, minimum height=0.95cm, below=of clean] (agg) {時間聚合};
-  \node[draw, fill=PrimaryBlue!8, minimum width=2.2cm, minimum height=0.95cm, left=of agg] (report) {CSV 報表};
-  \node[draw, fill=PrimaryBlue!8, minimum width=2.2cm, minimum height=0.95cm, right=of agg] (fig) {圖形輸出};
+  \node[draw=GradientEnd!55!white, fill=white!6!PanelMid, text=TextLight, minimum width=2.2cm, minimum height=0.95cm] (raw) {原始 CSV};
+  \node[draw=GradientEnd!55!white, fill=white!6!PanelMid, text=TextLight, minimum width=2.2cm, minimum height=0.95cm, right=of raw] (load) {資料載入};
+  \node[draw=GradientEnd!55!white, fill=white!6!PanelMid, text=TextLight, minimum width=2.2cm, minimum height=0.95cm, right=of load] (clean) {文字清理};
+  \node[draw=GradientEnd!55!white, fill=white!6!PanelMid, text=TextLight, minimum width=2.2cm, minimum height=0.95cm, right=of clean] (sent) {情緒判定};
+  \node[draw=GradientEnd!55!white, fill=white!6!PanelMid, text=TextLight, minimum width=2.2cm, minimum height=0.95cm, below=of clean] (agg) {時間聚合};
+  \node[draw=GradientEnd!55!white, fill=white!6!PanelMid, text=TextLight, minimum width=2.2cm, minimum height=0.95cm, left=of agg] (report) {CSV 報表};
+  \node[draw=GradientEnd!55!white, fill=white!6!PanelMid, text=TextLight, minimum width=2.2cm, minimum height=0.95cm, right=of agg] (fig) {圖形輸出};
 
   \draw[->, thick] (raw) -- (load);
   \draw[->, thick] (load) -- (clean);
