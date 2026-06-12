@@ -1,7 +1,7 @@
 # Python Twitter Sentiment Analysis
 
 This project analyzes Twitter posts collected on `2021-01-06` and reframes the final report around the impact of the U.S. Capitol attack on social sentiment, with Donald Trump-related discussion as the main event focus. The pipeline performs text cleaning, VADER sentiment scoring, event-subset extraction, and time-based visualization for use in a final presentation or written report.
-
+## 老師若直接看到成果展示，可直接前往 **slides** 可直接找到 final_presentation.pdf 這份檔案
 ## Project Highlights
 
 This version has been improved in four main ways:
