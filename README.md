@@ -24,6 +24,12 @@ The core research question is whether event-related Twitter discussion showed st
 
 This project does not depend on direct Twitter API calls to reconstruct every tweet timestamp. Instead, it uses a Snowflake-based reverse-engineering workflow inspired by `external/tweetedat-master/` so that tweet IDs can be mapped back to timestamps even when API access is limited or impractical for large historical batches.
 
+Key external references used in this project:
+
+- X Engineering, `Announcing Snowflake`: https://blog.x.com/engineering/en_us/a/2010/announcing-snowflake
+- X API Fundamentals, `Rate limits`: https://docs.x.com/x-api/fundamentals/rate-limits
+- TweetedAt project: https://oduwsdl.github.io/tweetedat/
+
 ## Recommended Project Structure
 
 ```text
@@ -146,3 +152,19 @@ For the Capitol-event subset filtered by keywords such as `trump`, `capitol`, `c
 - The canonical input file for the improved pipeline is `data/processed/tweets_with_created_at.csv`.
 - Root-level files such as `1234at.csv`, `tweets_with_created_at.csv`, and `tweets_2021-01-06.csv` are still kept as legacy copies for reference.
 - If you use `project_accmulated.ipynb`, open or run it from the project root so the compatibility imports continue to work.
+
+## References
+
+The final report and slide deck reference the following sources:
+
+1. X Engineering. `Announcing Snowflake`. Explains the design of Twitter Snowflake IDs and why they preserve time-order information.  
+   https://blog.x.com/engineering/en_us/a/2010/announcing-snowflake
+
+2. X Developer Platform. `X API Rate Limits`. Used to justify why large-scale historical timestamp reconstruction should not rely on repeated live API calls.  
+   https://docs.x.com/x-api/fundamentals/rate-limits
+
+3. TweetedAt. `Finding Tweet Timestamps for Pre and Post Snowflake Tweet IDs`. Used as the practical reverse-engineering reference for recovering tweet timestamps from tweet IDs.  
+   https://oduwsdl.github.io/tweetedat/
+
+4. NPR / CapRadio. `A timeline of the Jan. 6 Capitol attack — including when and how Trump responded`. Used to align key public event moments and Trump response timestamps in the presentation narrative.  
+   https://www.capradio.org/news/npr/story?storyid=1069977469
